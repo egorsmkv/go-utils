@@ -227,8 +227,7 @@ func main() {
 		logger.Info("videos-path has videos", "count", nFiles)
 	}
 
-	err = doAudioExtraction(argVideosPath)
-	if err != nil {
+	if err := doAudioExtraction(argVideosPath); err != nil {
 		logger.Error("cannot extract audio", "err", err)
 		os.Exit(1)
 	}

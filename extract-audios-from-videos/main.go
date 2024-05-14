@@ -21,9 +21,7 @@ import (
 var (
 	logger *slog.Logger
 	re     = regroup.MustCompile(`(?m)(?P<processed>\d+)kB`)
-)
 
-var (
 	argVideosPath       string
 	argFfmpegBinaryPath string
 )
@@ -66,33 +64,21 @@ func (progress *Progress) Write(p []byte) (int, error) {
 	return n, err
 }
 
-func checkFileExistence(path string) error {
+func checkExistence(path string, checkDir bool) error {
 	fi, err := os.Stat(path)
 
 	if os.IsNotExist(err) {
 		return err
 	}
 
-	if fi.IsDir() {
-		return errors.New("path is a directory")
-	}
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func checkDirExistence(path string) error {
-	fi, err := os.Stat(path)
-
-	if os.IsNotExist(err) {
-		return err
-	}
-
-	if !fi.IsDir() {
-		return errors.New("path is not a directory")
+	if checkDir {
+		if !fi.IsDir() {
+			return errors.New("path is a directory")
+		}
+	} else {
+		if fi.IsDir() {
+			return errors.New("path is not a directory")
+		}
 	}
 
 	if err != nil {
@@ -103,14 +89,12 @@ func checkDirExistence(path string) error {
 }
 
 func initSlog() {
-	logger = slog.New(tint.NewHandler(os.Stderr, nil))
-
-	slog.SetDefault(slog.New(
+	logger = slog.New(
 		tint.NewHandler(os.Stderr, &tint.Options{
 			Level:      slog.LevelDebug,
-			TimeFormat: time.Kitchen,
+			TimeFormat: time.RFC3339,
 		}),
-	))
+	)
 }
 
 func countFilesInPath(path string) (int, error) {
@@ -165,7 +149,15 @@ func extractAudio(path string) error {
 		}(ptyFile)
 	}
 
-	_, err = io.Copy(&Progress{}, ptyFile)
+	written, err := io.Copy(&Progress{}, ptyFile)
+
+	logger.Info("copied bytes", "size", byteCountSI(written))
+
+	if err != nil {
+		if strings.Contains(err.Error(), "input/output error") {
+			return nil
+		}
+	}
 
 	return err
 }
@@ -184,7 +176,7 @@ func doAudioExtraction(path string) error {
 
 			err = extractAudio(e.Name())
 			if err != nil {
-				logger.Warn("failed to extract audio", "err", err)
+				logger.Error("failed to extract audio", "err", err)
 			}
 		}
 	}
@@ -193,8 +185,6 @@ func doAudioExtraction(path string) error {
 }
 
 func main() {
-	var err error
-
 	initSlog()
 
 	logger.Info("extract-audios-from-videos has been started")
@@ -209,17 +199,16 @@ func main() {
 		logger.Info("check ffmpeg-binary existence", "path", argFfmpegBinaryPath)
 	}
 
-	if err = checkFileExistence(argFfmpegBinaryPath); err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
+	if err := checkExistence(argFfmpegBinaryPath, false); err != nil {
+		logger.Error("cannot check ffmpeg-binary", "err", err)
 	} else {
 		logger.Info("ffmpeg-binary has been found", "path", argFfmpegBinaryPath)
 	}
 
 	logger.Info("check videos-path existence", "path", argVideosPath)
 
-	if err = checkDirExistence(argVideosPath); err != nil {
-		logger.Error(err.Error())
+	if err := checkExistence(argVideosPath, true); err != nil {
+		logger.Error("cannot check videos-path", "err", err)
 		os.Exit(1)
 	} else {
 		logger.Info("videos-path has been found", "path", argVideosPath)
@@ -227,7 +216,7 @@ func main() {
 
 	nFiles, err := countFilesInPath(argVideosPath)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("cannot count files in path", "err", err)
 		os.Exit(1)
 	}
 
@@ -240,7 +229,7 @@ func main() {
 
 	err = doAudioExtraction(argVideosPath)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("cannot extract audio", "err", err)
 		os.Exit(1)
 	}
 

@@ -1,6 +1,6 @@
 module extract-audios-from-videos
 
-go 1.22
+go 1.22.3
 
 require (
 	github.com/creack/pty v1.1.21

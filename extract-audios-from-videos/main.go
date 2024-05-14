@@ -134,7 +134,10 @@ func countFilesInPath(path string) (int, error) {
 }
 
 func extractAudio(path string) error {
-	var err error
+	var (
+		err     error
+		ptyFile *os.File
+	)
 
 	inFilePath := fmt.Sprintf("%s/%s", argVideosPath, path)
 
@@ -156,12 +159,11 @@ func extractAudio(path string) error {
 
 	command := exec.Command(argFfmpegBinaryPath, args...)
 
-	var ptyFile *os.File
 	if ptyFile, err = pty.Start(command); err == nil {
 		defer func(ptyFile *os.File) {
 			err = ptyFile.Close()
 			if err != nil {
-				logger.Error("failed to close pty", "error", err)
+				logger.Error("failed to close pty", "err", err)
 			}
 		}(ptyFile)
 	}

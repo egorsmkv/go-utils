@@ -140,14 +140,15 @@ func extractAudio(path string) error {
 
 	command := exec.Command(argFfmpegBinaryPath, args...)
 
-	if ptyFile, err = pty.Start(command); err == nil {
-		defer func(ptyFile *os.File) {
-			err = ptyFile.Close()
-			if err != nil {
-				logger.Error("failed to close pty", "err", err)
-			}
-		}(ptyFile)
+	if ptyFile, err = pty.Start(command); err != nil {
+		logger.Error("cannot start a process", "err", err)
 	}
+	defer func(ptyFile *os.File) {
+		err = ptyFile.Close()
+		if err != nil {
+			logger.Error("failed to close pty", "err", err)
+		}
+	}(ptyFile)
 
 	written, err := io.Copy(&Progress{}, ptyFile)
 
@@ -155,6 +156,7 @@ func extractAudio(path string) error {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "input/output error") {
+			logger.Warn("dropping an input/output error (https://unix.stackexchange.com/a/538271)", "err", err)
 			return nil
 		}
 	}

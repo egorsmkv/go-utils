@@ -103,13 +103,10 @@ func checkDirExistence(path string) error {
 }
 
 func initSlog() {
-	w := os.Stderr
+	logger = slog.New(tint.NewHandler(os.Stderr, nil))
 
-	logger = slog.New(tint.NewHandler(w, nil))
-
-	// set global logger with custom options
 	slog.SetDefault(slog.New(
-		tint.NewHandler(w, &tint.Options{
+		tint.NewHandler(os.Stderr, &tint.Options{
 			Level:      slog.LevelDebug,
 			TimeFormat: time.Kitchen,
 		}),

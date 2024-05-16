@@ -29,11 +29,11 @@ var (
 func parseArgs() {
 	flaggy.SetName("extract-audios-from-videos")
 	flaggy.SetDescription("A program that extracts audios from video files using ffmpeg")
+	flaggy.SetVersion("1.0")
 
 	flaggy.String(&argVideosPath, "vp", "videos-path", "A path to the folder with videos")
 	flaggy.String(&argFfmpegBinaryPath, "fbp", "ffmpeg-binary", "A path to the ffmpeg binary")
 
-	flaggy.SetVersion("1.0")
 	flaggy.Parse()
 }
 
